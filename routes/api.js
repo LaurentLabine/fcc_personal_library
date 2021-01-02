@@ -1,47 +1,106 @@
-/*
-*
-*
-*       Complete the API routing below
-*       
-*       
-*/
-
 'use strict';
+const mongoose = require("mongoose");
+const { Schema } = mongoose;
+
+const bookSchema = new Schema({
+title: String,
+commentcount: {type: Number, default: 0},
+comments: [String]
+})
+
+const Book = mongoose.model("Book", bookSchema, "PersonalLibrary")
+
 
 module.exports = function (app) {
 
   app.route('/api/books')
     .get(function (req, res){
-      //response will be array of book objects
-      //json res format: [{"_id": bookid, "title": book_title, "commentcount": num_of_comments },...]
+      Book.find({}, (err,doc) => {
+        if(err) return console.error(err)
+        return res.json(doc)
+      })
     })
     
     .post(function (req, res){
       let title = req.body.title;
-      //response will contain new book object including atleast _id and title
+      
+      if(!title)
+        return res.send("missing required field title")
+
+          let newBook = new Book({title: title})
+          newBook.save((err, doc) => {
+            if(err) return console.error(err)
+            res.json({title:doc.title,_id: doc._id})
+          })
     })
     
     .delete(function(req, res){
-      //if successful response will be 'complete delete successful'
+      Book.deleteMany({}, (err, doc) => {
+        if(err) console.error(err)
+        return res.send("complete delete successful")
+      })
     });
-
-
 
   app.route('/api/books/:id')
     .get(function (req, res){
       let bookid = req.params.id;
-      //json res format: {"_id": bookid, "title": book_title, "comments": [comment,comment,...]}
+      console.log("bookId length : " + bookid.length)
+
+      if(bookid.length === 0)
+      return res.send("missing required field ID")
+
+      Book.findOne({_id: bookid}, (err, doc) => {
+        if(err) console.error(err)
+        if(doc === null) {//Book doesn<t exist.  Creating new one
+          res.send("no book exists")
+        } else{
+          return res.json(doc)
+        }
+      })
     })
     
     .post(function(req, res){
       let bookid = req.params.id;
       let comment = req.body.comment;
-      //json res format same as .get
+
+      if (comment !== undefined){
+        
+
+        Book.updateOne({_id: bookid},
+          {
+              "$push" : { 
+                  "comments" : comment
+              },
+              "$inc": { "commentcount": 1 } 
+          },
+          (err, doc) => {
+            if(err) return console.error(err)
+
+            if(doc.nModified === 0)
+            return res.send("no book exists")
+            
+            Book.findOne({_id: bookid}, (err, doc) => {
+              if(err) console.error(err)
+                return res.json(doc)
+              })
+          })
+      }
+      else
+        res.send("missing required field comment")
     })
     
     .delete(function(req, res){
       let bookid = req.params.id;
-      //if successful response will be 'delete successful'
+
+      //Pull request documentation :      // https://www.tutorialspoint.com/mongodb-query-to-remove-subdocument-from-document
+      Book.deleteOne({ _id: bookid }, (err, doc) => {
+        if(err) console.error(err);
+
+        if(doc.n === 0)
+          return res.send("no book exists")
+
+        res.send("delete successful");
+      });
     });
   
 };
