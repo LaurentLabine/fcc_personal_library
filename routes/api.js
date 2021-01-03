@@ -44,7 +44,7 @@ module.exports = function (app) {
   app.route('/api/books/:id')
     .get(function (req, res){
       let bookid = req.params.id;
-      console.log("bookId length : " + bookid.length)
+      // console.log("bookId length : " + bookid.length)
 
       if(bookid.length === 0)
       return res.send("missing required field ID")
